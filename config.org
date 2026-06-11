@@ -9,6 +9,7 @@
   - [[#elpaca-package-manager][Elpaca Package Manager]]
   - [[#load-evil-mode][Load Evil Mode]]
   - [[#general-keybinding][General Keybinding]]
+- [[#all-the-icons][ALL THE ICONS]]
 - [[#enhanced-gui][ENHANCED GUI]]
   - [[#disable-bars-and-maximize-window][Disable Bars and Maximize window]]
   - [[#display-line-numbers-and-truncated-lines][Display Line numbers and truncated lines]]
@@ -22,7 +23,10 @@
   - [[#specific-behaviours][Specific behaviours]]
   - [[#disable-electric-indent][Disable Electric Indent]]
   - [[#source-code-block-tag-expansion][Source Code Block Tag Expansion]]
+- [[#reload-function][RELOAD FUNCTION]]
 - [[#shell-and-connexions][SHELL AND CONNEXIONS]]
+  - [[#eshell][Eshell]]
+  - [[#eat][EAT]]
 - [[#sudo-edit][SUDO EDIT]]
 - [[#wich-key][WICH-KEY]]
 
@@ -119,18 +123,91 @@ Important progams to be loaded at init
 ** General Keybinding
 
 #+begin_src emacs-lisp
-  (defun reload-config ()
-    (interactive)
-    (load-file user-init-file)
-  )
 
+   (use-package general
+     :ensure t
+     :demand t    
+     :config
+     (general-evil-setup)
 
+       ;; set up 'SPC' as the global leader key
+     (general-create-definer rlc/leader-keys
+         :states '(normal insert visual emacs)
+             :keymaps 'override
+             :prefix "SPC" ;; set leader
+             :global-prefix "M-SPC") ;; access leader in insert mode
+
+       (rlc/leader-keys
+        "." '(find-file :wk "Find file")
+        "f c" '((lambda () (interactive) (find-file "~/.emacs.d/config.org")) :wk "Edit emacs config")
+        "f r" '(counsel-recentf :wk "Find recent files")
+        "TAB TAB" '(comment-line :wk "Comment lines"))
+
+       (rlc/leader-keys
+        "b" '(:ignore t :wk "buffer")
+        "b b" '(switch-to-buffer :wk "Switch buffer")
+        "b i" '(ibuffer :wk "Ibuffer")
+        "b k" '(kill-this-buffer :wk "Kill this buffer")
+        "b n" '(next-buffer :wk "Next buffer")
+        "b p" '(previous-buffer :wk "Previous buffer")
+        "b r" '(revert-buffer :wk "Reload buffer"))
+
+       (rlc/leader-keys
+        "e" '(:ignore t :wk "Eshell/Evaluate")    
+        "e b" '(eval-buffer :wk "Evaluate elisp in buffer")
+        "e d" '(eval-defun :wk "Evaluate defun containing or after point")
+        "e e" '(eval-expression :wk "Evaluate and elisp expression")
+        "e h" '(counsel-esh-history :which-key "Eshell history")
+        "e l" '(eval-last-sexp :wk "Evaluate elisp expression before point")
+        "e r" '(eval-region :wk "Evaluate elisp in region")
+        "e s" '(eshell :which-key "Eshell"))
+
+       (rlc/leader-keys
+        "h" '(:ignore t :wk "Help")
+        "h f" '(describe-function :wk "Describe function")
+        "h v" '(describe-variable :wk "Describe variable")
+        ;;"h r r" '((lambda () (interactive) (load-file "~/.config/emacs/init.el")) :wk "Reload emacs config"))
+        "h r r" '(reload-init-file :wk "Reload emacs config"))
+
+       (rlc/leader-keys
         "t" '(:ignore t :wk "Toggle")
-        "t l" '(display-line-numbers-mode :wk "Toggle line number")
-        "t t" '(visual-line-moder :wk "Toggle truncated line"))
-    )
-  #+end_src
-  
+        "t l" '(display-line-numbers-mode :wk "Toggle line numbers")
+        "t t" '(visual-line-mode :wk "Toggle truncated lines")
+        "t v" '(vterm-toggle :wk "Toggle vterm"))
+
+     (rlc/leader-keys
+        "w" '(:ignore t :wk "Windows")
+        ;; Window splits
+        "w c" '(evil-window-delete :wk "Close window")
+        "w n" '(evil-window-new :wk "New window")
+        "w s" '(evil-window-split :wk "Horizontal split window")
+        "w v" '(evil-window-vsplit :wk "Vertical split window")
+        ;; Window motions
+        "w h" '(evil-window-left :wk "Window left")
+        "w j" '(evil-window-down :wk "Window down")
+        "w k" '(evil-window-up :wk "Window up")
+        "w l" '(evil-window-right :wk "Window right")
+        "w w" '(evil-window-next :wk "Goto next window")
+        ;; Move Windows
+        "w H" '(buf-move-left :wk "Buffer move left")
+        "w J" '(buf-move-down :wk "Buffer move down")
+        "w K" '(buf-move-up :wk "Buffer move up")
+        "w L" '(buf-move-right :wk "Buffer move right"))
+       )
+ #+end_src
+
+* ALL THE ICONS
+
+#+begin_src emacs-lisp
+  (use-package all-the-icons
+    :ensure t
+    :if (display-graphic-p))
+
+  (use-package all-the-icons-dired
+    :ensure t
+    :hook (dired-mode . (lambda () (all-the-icons-dired-mode t))))
+#+end_src
+
 * ENHANCED GUI
 
 ** Disable Bars and Maximize window
@@ -273,6 +350,14 @@ Disabling indentation in Org mode
   (require 'org-tempo)
 #+end_src
 
+* RELOAD FUNCTION
+#+begin_src emacs-lisp
+(defun reload-init-file ()
+  (interactive)
+  (load-file user-init-file)
+  (load-file user-init-file))
+#+end_src
+  
 * SHELL AND CONNEXIONS
 
 #+begin_src emacs-lisp
@@ -285,7 +370,66 @@ Disabling indentation in Org mode
     ;;           (list (regexp-quote "/sshx:user@host:")
     ;;                 "remote-shell" "/usr/bin/bash"))
 #+end_src
+
+** Eshell
+
+#+begin_src emacs-lisp
+ (add-hook 'eshell-mode-hook (lambda () (setenv "TERM" "xterm-256color")))
+ (setq eshell-prompt-function
+      (lambda ()
+        (concat
+         (propertize "┌─[" 'face `(:foreground "#2aa198"))
+         (propertize (user-login-name) 'face `(:foreground "#dc322f"))
+         (propertize "@" 'face `(:foreground "#2aa198"))
+         (propertize (system-name) 'face `(:foreground "#268bd2"))
+         (propertize "]──[" 'face `(:foreground "#2aa198"))
+         (propertize (format-time-string "%H:%M" (current-time)) 'face `(:foreground "#b58900"))
+         (propertize "]──[" 'face `(:foreground "#2aa198"))
+         (propertize (concat (eshell/pwd)) 'face `(:foreground "#93a1a1"))
+         (propertize "]\n" 'face `(:foreground "#2aa198"))
+         (propertize "└─>" 'face `(:foreground "#2aa198"))
+         (propertize (if (= (user-uid) 0) " # " " $ ") 'face `(:foreground "#2aa198"))
+         )))
+;; (use-package eshell-syntax-highlighting
+    ;; :after eshell-mod
+      ;; :ensure t
+      ;; (eshell-syntax-highlighting-global-mode +1))
+    ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
+    ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
+    ;; eshell-aliases-file -- sets an aliases file for the eshell.
       
+    ;; (setq eshell-rc-script (concat user-emacs-directory "eshell/profile")
+    ;;       eshell-aliases-file (concat user-emacs-directory "eshell/aliases")
+    ;;       eshell-history-size 5000
+    ;;       eshell-buffer-maximum-lines 5000
+    ;;       eshell-hist-ignoredups t
+    ;;       eshell-scroll-to-bottom-on-input t
+    ;;       eshell-destroy-buffer-when-process-dies t
+    ;;       ;; eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
+#+end_src
+
+** EAT
+
+#+begin_src emacs-lisp
+(use-package eat
+  :elpaca (eat :host codeberg :repo "akib/emacs-eat")
+  :ensure t
+  :config
+  ;; Mode Evil dans le terminal
+  (add-hook 'eat-mode-hook #'evil-insert-state)
+  
+  ;; Tracking avancé
+  (setq eat-enable-directory-tracking t)
+  (setq eat-enable-prompt-tracking t)
+  
+  ;; Intégration avec le prompt
+  (defun my-eat-setup-prompt ()
+    "Configure le prompt pour fonctionner avec powerlevel10k"
+    (add-hook 'eat-before-output-hook
+              (lambda () (eat--update-pwd (expand-file-name default-directory)))))
+  (add-hook 'eat-mode-hook #'my-eat-setup-prompt))
+#+end_src
+
 * SUDO EDIT
 
 #+begin_src emacs-lisp
